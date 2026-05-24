@@ -18,7 +18,12 @@ else:
 
 INPUT_DIR  = os.path.join(BASE_DIR, "come")
 OUTPUT_DIR = os.path.join(BASE_DIR, "for")
-FONT_PATH  = os.path.join(os.environ.get('SYSTEMROOT', 'C:\\Windows'), 'Fonts', 'msyh.ttc')
+if sys.platform == 'darwin':
+    FONT_PATH = "/System/Library/Fonts/STHeiti Medium.ttc"
+elif sys.platform.startswith('win'):
+    FONT_PATH = os.path.join(os.environ.get('SYSTEMROOT', 'C:\\Windows'), 'Fonts', 'msyh.ttc')
+else:
+    FONT_PATH = "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc"
 
 FILE_PATTERN  = re.compile(r'^(.+)-第(\d+)集\.mp4$')
 
