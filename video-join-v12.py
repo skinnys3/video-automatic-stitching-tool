@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-短剧视频拼接工具 v1.2
+短剧视频拼接工具 v1.2.1
 功能：
-  - v1.0 拼接 + v1.1 尺寸强制 + 硬件加速
+  - v1.0 拼接 + v1.1 尺寸强制
+  - 自动检测硬件编码器（降低 CPU 占用）
   - 左上角剧名水印 + 右侧竖排"无不良引导"
 """
 
@@ -147,6 +148,45 @@ def detect_pad_color(video_path):
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
+# ======================== 编码器检测（硬件加速优先） ========================
+
+_ENCODER_PARAMS = None
+
+def get_encoder_params():
+    """检测系统可用编码器，优先使用硬件加速以降低 CPU 占用"""
+    global _ENCODER_PARAMS
+    if _ENCODER_PARAMS is not None:
+        return _ENCODER_PARAMS
+
+    # 默认：快速软件编码
+    name = "libx264 (software)"
+    params = ['-c:v', 'libx264', '-b:v', '4000k', '-preset', 'ultrafast']
+
+    try:
+        r = subprocess.run(['ffmpeg', '-encoders'], capture_output=True, text=True, timeout=10)
+        encoders = r.stdout + r.stderr
+
+        if sys.platform == 'darwin' and 'h264_videotoolbox' in encoders:
+            name = "h264_videotoolbox (Apple Hardware)"
+            params = ['-c:v', 'h264_videotoolbox', '-b:v', '4000k', '-quality', '90']
+        elif sys.platform.startswith('win'):
+            if 'h264_nvenc' in encoders:
+                name = "h264_nvenc (NVIDIA)"
+                params = ['-c:v', 'h264_nvenc', '-b:v', '4000k', '-preset', 'p7']
+            elif 'h264_amf' in encoders:
+                name = "h264_amf (AMD)"
+                params = ['-c:v', 'h264_amf', '-b:v', '4000k', '-quality', 'speed']
+            elif 'h264_qsv' in encoders:
+                name = "h264_qsv (Intel QuickSync)"
+                params = ['-c:v', 'h264_qsv', '-b:v', '4000k', '-preset', 'fast']
+    except:
+        pass
+
+    print(f"  🎞 编码器: {name}")
+    _ENCODER_PARAMS = params
+    return params
+
+
 # ======================== 拼接引擎（带水印） ========================
 
 def build_overlay_filter(book_name, target_w, target_h):
@@ -216,7 +256,7 @@ def concat_videos(file_list, output_path, title_png, disc_png):
             '-i', disc_png,
             '-filter_complex', filter_complex,
             '-map', '[out]', '-map', '0:a?',
-            '-c:v', 'libx264', '-b:v', '4000k', '-preset', 'medium',
+            *get_encoder_params(),
             '-c:a', 'copy',
             '-pix_fmt', 'yuv420p',
             '-y', output_path
@@ -306,11 +346,12 @@ def process_book(book_name, episodes):
 # ======================== 主流程 ========================
 
 def main():
-    try:
-        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
-    except:
-        print("❌ 未找到 ffmpeg")
-        sys.exit(1)
+    for cmd in ['ffmpeg', 'ffprobe']:
+        try:
+            subprocess.run([cmd, '-version'], capture_output=True, check=True)
+        except:
+            print(f"❌ 未找到 {cmd}，请确认 ffmpeg 已安装并加入系统 PATH")
+            sys.exit(1)
 
     input_path = Path(INPUT_DIR)
     if not input_path.is_dir():
