@@ -1,0 +1,12 @@
+1、安装python（解压python-manager-26.2)
+
+2、打开cmd（搜索框直接搜索cmd，得到命令运行符）
+3、python -m pip install pillow
+python -m pip install ffmpeg-python
+
+3、依次粘贴下面的代码到cmd，下载ffmpeg和ffprobe【压缩包里有，无需操作】
+https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
+解压压缩包，找到里面的 bin\ffmpeg.exe
+把 ffmpeg.exe和ffprobe.exe 直接复制到 D:\工作\ai\ 文件夹里（和你的video-join-v12.py放一起）
+
+4、使用前提：需要.bat脚本文件所在的文件夹中，含有“come”和“for”两个文件夹，原视频需要放在come文件夹中，运行后，自动会在for文件夹中，生成对应的剧的子文件夹
